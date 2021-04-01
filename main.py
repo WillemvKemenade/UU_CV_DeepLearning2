@@ -1,7 +1,14 @@
-import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
+import tensorflow as tf
 import numpy as np
+import matplotlib.pyplot as plt
+from tensorflow.keras import datasets, layers, models
+from sklearn.model_selection import KFold
+import os
+import matplotlib.image as mpimg
 import cv2
+from sklearn import preprocessing
+
+os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 
 def Standford40():
     with open('data/Stanford40/ImageSplits/train.txt', 'r') as f:
@@ -24,26 +31,41 @@ def Standford40():
     # imgplot = plt.imshow(img)
     # plt.show()
     # print(f'An image with the label - {train_labels[image_no]}')
-    return train_files, train_labels, test_files, test_labels, action_categories
 
-def stanford_model():
-    model = models.Sequential()
-    model.add(layers.Conv2D(filters=64, kernel_size=(3, 3), activation='relu', input_shape=(28, 28, 1)))
-    model.add(layers.Conv2D(filters=32, kernel_size=(3, 3), activation='relu'))
-    model.add(layers.Conv2D(filters=16, kernel_size=(3, 3), activation='relu'))
+    # TODO: DO A TRAIN VALIDATION SPLIT OF 10%(400)
+    # TODO: CONVERT THE IMAGE TEXT PLACE NAMES INTO AN NDARRAY CHECK THE UU BOOKMARKS
+    #
+    #Encodes the labels from strings to a number
+    label_encoder = preprocessing.LabelEncoder()
+    label_encoder.fit(action_categories)
 
-    model.add(layers.Flatten())
-    model.add(layers.Dense(128, activation='relu'))
-    model.add(layers.Dense(64, activation='relu'))
-    model.add(layers.Dense(10, activation='softmax'))
+    # print(label_encoder.transform(["cooking"])) gives the number from string
+    # print(label_encoder.inverse_transform([5])) gives the string from the number
 
-    model.compile(optimizer='adam',
-                  loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-                  metrics=['accuracy'])
+    #Load in the training files and encode the labels
+    train_files_nd = []
+    for x in train_files:
+        img = cv2.imread("data/Stanford40/JPEGimages/"+x)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        resized_image = cv2.resize(img, (500, 500), interpolation=cv2.INTER_NEAREST)
+        train_files_nd.append(resized_image)
+    train_files = np.asarray(train_files_nd)
+    train_labels = label_encoder.transform(train_labels)
 
-    if verbose == 1:
-        model.summary()
-    return model
+    #load in the testing files and encode the labels
+    test_files_nd = []
+    for x in test_files:
+        img = cv2.imread("data/Stanford40/JPEGimages/" + x)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        resized_image = cv2.resize(img, (500, 500), interpolation=cv2.INTER_NEAREST)
+        test_files_nd.append(resized_image)
+    test_files = np.asarray(test_files_nd)
+    test_labels = label_encoder.transform(test_labels)
+
+    (train_files, train_labels) = train_files[400:], train_labels[400:]
+    (valid_images, valid_labels) = train_files[:400], train_labels[:400]
+
+    return train_files, train_labels, valid_images, valid_labels, test_files, test_labels
 
 def TV_HI():
     set_1_indices = [
@@ -84,9 +106,52 @@ def TV_HI():
     # cv2.destroyAllWindows()
     return set_1, set_1_label, set_2, set_2_label
 
+def get_history(model, valid_test_images, valid_test_labels, train_images, train_labels):
+    history = model.fit(train_images,
+                        train_labels,
+                        batch_size=64,
+                        epochs=15,
+                        verbose=2,
+                        validation_data=(valid_test_images, valid_test_labels))
+    return history
+
+def stanford_model(verbose=0):
+    model = models.Sequential()
+    model.add(layers.Conv2D(filters=64, kernel_size=(3, 3), activation='relu', input_shape=(3500, 1)))
+    model.add(layers.Conv2D(filters=32, kernel_size=(3, 3), activation='relu'))
+    model.add(layers.Conv2D(filters=16, kernel_size=(3, 3), activation='relu'))
+
+    model.add(layers.Flatten())
+    model.add(layers.Dense(128, activation='relu'))
+    model.add(layers.Dense(64, activation='relu'))
+    model.add(layers.Dense(10, activation='softmax'))
+
+    model.compile(optimizer='adam',
+                  loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+                  metrics=['accuracy'])
+
+    if verbose == 1:
+        model.summary()
+    return model
+
+def plot_training_loss(history):
+    plt.plot(np.log(history.history["loss"]), label='training')
+    plt.plot(np.log(history.history["val_loss"]), label='validation')
+    plt.xlabel('Epoch')
+    plt.ylabel('Log Loss')
+    plt.ylim([0.4, 0.6])
+    plt.title("Loss Model Stanford")
+    plt.legend(loc='upper right')
+    plt.show()
+
 def main():
-    standford_train_files, standford_train_labels, standford_test_files, standford_test_labels = Standford40()
-    tvhi_train_files, tvhi_train_labels, tvhi_test_files, tvhi_test_labels, action_categories = TV_HI()
+    standford_train_images, standford_train_labels, standford_valid_images, standford_valid_labels, standford_test_images, standford_test_labels = Standford40()
+    # model = stanford_model()
+    # history = get_history(model, standford_valid_images, standford_valid_labels, standford_train_images, standford_train_labels)
+    # plot_training_loss(history)
+    # model.save('Training_Models\\model_1')
+
+    tvhi_train_files, tvhi_train_labels, tvhi_test_files, tvhi_test_labels = TV_HI()
 
 if __name__ == "__main__":
     main()
