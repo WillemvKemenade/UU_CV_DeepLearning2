@@ -7,6 +7,7 @@ import os
 import matplotlib.image as mpimg
 import cv2
 from sklearn import preprocessing
+import Optical_Flow as flow
 
 os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 
@@ -145,13 +146,15 @@ def plot_training_loss(history):
     plt.show()
 
 def main():
-    standford_train_images, standford_train_labels, standford_valid_images, standford_valid_labels, standford_test_images, standford_test_labels = Standford40()
+    # standford_train_images, standford_train_labels, standford_valid_images, standford_valid_labels, standford_test_images, standford_test_labels = Standford40()
     # model = stanford_model()
     # history = get_history(model, standford_valid_images, standford_valid_labels, standford_train_images, standford_train_labels)
     # plot_training_loss(history)
     # model.save('Training_Models\\model_1')
+    # tvhi_train_files, tvhi_train_labels, tvhi_test_files, tvhi_test_labels = TV_HI()
 
     tvhi_train_files, tvhi_train_labels, tvhi_test_files, tvhi_test_labels = TV_HI()
+    stacked_videos = flow.get_video_flow_stacks(tvhi_train_files)
 
 if __name__ == "__main__":
     main()
