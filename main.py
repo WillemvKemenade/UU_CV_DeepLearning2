@@ -9,6 +9,10 @@ import cv2
 from sklearn import preprocessing
 import Optical_Flow as flow
 
+XSIZE = 20
+YSIZE = 20
+STANFORD_LEARNING_RATE = 0.01
+
 os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 
 def Standford40():
@@ -48,7 +52,7 @@ def Standford40():
     for x in train_files:
         img = cv2.imread("data/Stanford40/JPEGimages/"+x)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        resized_image = cv2.resize(img, (500, 500), interpolation=cv2.INTER_NEAREST)
+        resized_image = cv2.resize(img, (XSIZE, YSIZE), interpolation=cv2.INTER_NEAREST)
         train_files_nd.append(resized_image)
     train_files = np.asarray(train_files_nd)
     train_labels = label_encoder.transform(train_labels)
@@ -58,7 +62,7 @@ def Standford40():
     for x in test_files:
         img = cv2.imread("data/Stanford40/JPEGimages/" + x)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        resized_image = cv2.resize(img, (500, 500), interpolation=cv2.INTER_NEAREST)
+        resized_image = cv2.resize(img, (XSIZE, YSIZE), interpolation=cv2.INTER_NEAREST)
         test_files_nd.append(resized_image)
     test_files = np.asarray(test_files_nd)
     test_labels = label_encoder.transform(test_labels)
@@ -84,7 +88,7 @@ def TV_HI():
     set_1 = [f'{classes[c]}_{i:04d}.avi' for c in range(len(classes)) for i in set_1_indices[c]]
     set_1_label = [f'{classes[c]}' for c in range(len(classes)) for i in set_1_indices[c]]
     # print(f'Set 1 to be used for test ({len(set_1)}):\n\t{set_1}')
-    # print(f'Set 1 labels ({len(set_1_label)}):\n\t{set_1_label}\n')
+    # print(f'Set 1 labels ({len(set_1_label)}):\n\t{set_1_label}\n')   
 
     # training set
     set_2 = [f'{classes[c]}_{i:04d}.avi' for c in range(len(classes)) for i in set_2_indices[c]]
@@ -110,30 +114,12 @@ def TV_HI():
 def get_history(model, valid_test_images, valid_test_labels, train_images, train_labels):
     history = model.fit(train_images,
                         train_labels,
-                        batch_size=64,
-                        epochs=15,
-                        verbose=2,
+                        batch_size=8,
+                        epochs=10,
+                        verbose=1,
                         validation_data=(valid_test_images, valid_test_labels))
     return history
 
-def stanford_model(verbose=0):
-    model = models.Sequential()
-    model.add(layers.Conv2D(filters=64, kernel_size=(3, 3), activation='relu', input_shape=(3500, 1)))
-    model.add(layers.Conv2D(filters=32, kernel_size=(3, 3), activation='relu'))
-    model.add(layers.Conv2D(filters=16, kernel_size=(3, 3), activation='relu'))
-
-    model.add(layers.Flatten())
-    model.add(layers.Dense(128, activation='relu'))
-    model.add(layers.Dense(64, activation='relu'))
-    model.add(layers.Dense(10, activation='softmax'))
-
-    model.compile(optimizer='adam',
-                  loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-                  metrics=['accuracy'])
-
-    if verbose == 1:
-        model.summary()
-    return model
 
 def plot_training_loss(history):
     plt.plot(np.log(history.history["loss"]), label='training')
@@ -145,16 +131,110 @@ def plot_training_loss(history):
     plt.legend(loc='upper right')
     plt.show()
 
+
+def stanford_model(verbose=0):
+    model = models.Sequential()
+    model.add(layers.Conv2D(filters=64, kernel_size=(3, 3), activation='relu', input_shape=(XSIZE, YSIZE, 3)))
+    model.add(layers.Conv2D(filters=32, kernel_size=(3, 3), activation='relu'))
+    model.add(layers.Conv2D(filters=16, kernel_size=(3, 3), activation='relu'))
+
+    model.add(layers.Flatten())
+    model.add(layers.Dense(128, activation='relu'))
+    model.add(layers.Dense(64, activation='relu'))
+    model.add(layers.Dense(40, activation='softmax'))
+
+    opt = tf.keras.optimizers.Adam(lr=STANFORD_LEARNING_RATE)
+    model.compile(optimizer=keras.optimizers.Adam(lr=0.01),
+                  loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+                  metrics=['accuracy'])
+
+    if verbose == 1:
+        model.summary()
+    return model
+
+
+def transfer_stanford_to_tvhi_model(st_model, verbose=0):
+    if verbose == 1:
+        st_model.summary()
+
+    # Remove trainability from Stanford layers
+    for layer in st_model.layers:
+        layer.trainable = False
+
+    # Add new output layer to the Stanford layer instead of the original output layer
+    new_output_layer = layers.Dense(5, activation='softmax', name="newlayer")(st_model.layers[-2].output)
+    tvhi_transfer_model = tf.keras.models.Model(st_model.input, new_output_layer)
+
+    # Compile new model with 1/10 of the original learning rate
+    opt = tf.keras.optimizers.Adam(lr=STANFORD_LEARNING_RATE/10)
+    tvhi_transfer_model.compile(optimizer=opt,
+              loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+              metrics=['accuracy'])
+
+    if verbose == 1:
+        tvhi_transfer_model.summary()
+
+    return tvhi_transfer_model
+
+
+def optical_flow_model(verbose=0):
+    model = models.Sequential()
+    model.add(layers.Conv2D(filters=64, kernel_size=(3, 3), activation='relu', input_shape=(XSIZE, YSIZE, 3)))
+    model.add(layers.Conv2D(filters=32, kernel_size=(3, 3), activation='relu'))
+    model.add(layers.Conv2D(filters=16, kernel_size=(3, 3), activation='relu'))
+
+    model.add(layers.Flatten())
+    model.add(layers.Dense(128, activation='relu'))
+    model.add(layers.Dense(64, activation='relu'))
+    model.add(layers.Dense(40, activation='softmax'))
+
+    opt = tf.keras.optimizers.Adam(lr=STANFORD_LEARNING_RATE)
+    model.compile(optimizer=keras.optimizers.Adam(lr=0.01),
+                  loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+                  metrics=['accuracy'])
+
+    if verbose == 1:
+        model.summary()
+    return model
+
+
 def main():
     # standford_train_images, standford_train_labels, standford_valid_images, standford_valid_labels, standford_test_images, standford_test_labels = Standford40()
+
     # model = stanford_model()
+    # model.summary()
+
     # history = get_history(model, standford_valid_images, standford_valid_labels, standford_train_images, standford_train_labels)
     # plot_training_loss(history)
-    # model.save('Training_Models\\model_1')
+    # model.save('Models/stanford_model')
+    st_model = tf.keras.models.load_model('Models/stanford_model')
+    tvhi_transfer_model = transfer_stanford_to_tvhi_model(st_model, verbose=1)
+
+
+    # TODO:
+    # TODO: ADD these datasets -> tvhi_train_images, tvhi_train_labels, tvhi_valid_images, tvhi_valid_labels
+    # TODO: 
+    # TODO: These consist of the middle image of all video clips, then we can train tvhi model with pretrained info on stanford40
+    # TODO:
+
     # tvhi_train_files, tvhi_train_labels, tvhi_test_files, tvhi_test_labels = TV_HI()
 
     tvhi_train_files, tvhi_train_labels, tvhi_test_files, tvhi_test_labels = TV_HI()
-    stacked_videos = flow.get_video_flow_stacks(tvhi_train_files)
+
+    # stacked_videos = flow.get_video_flow_stacks(tvhi_train_files)
+    # np.save("resized_flow.npy", stacked_videos)
+    tvhi_train_flow = np.load("resized_flow.npy", allow_pickle=True)
+    # print(tvhi_train_flow.shape)
+    # for i in tvhi_train_flow:
+    #     print(i.shape)
+    #     for j in i:
+    #         print(j.shape)    
+    #         for k in j:
+    #             print(k.shape)
+    #             break
+    #         break
+    #     break
+
 
 if __name__ == "__main__":
     main()

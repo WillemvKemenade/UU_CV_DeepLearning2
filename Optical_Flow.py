@@ -1,6 +1,9 @@
 import cv2 as cv
 import numpy as np
 
+XSIZE = 20
+YSIZE = 20
+
 def get_video_flow_stacks(video_list):
     stacked_videos = []
     index = 1
@@ -12,6 +15,7 @@ def get_video_flow_stacks(video_list):
         middle_frame = int(cap.get(cv.CAP_PROP_FRAME_COUNT) / 2)
         ret, first_frame = cap.read()
         prev_gray = cv.cvtColor(first_frame, cv.COLOR_BGR2GRAY) # set the first frame to gray scale and use it for the first optical flow comparison
+        prev_gray = cv.resize(prev_gray, (XSIZE, YSIZE), interpolation=cv.INTER_NEAREST)
         counter = 1
         stacked_frames = []
 
@@ -20,6 +24,7 @@ def get_video_flow_stacks(video_list):
             if frame is not None:
                 # cv.imshow("input", frame)
                 gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY) #gray scale of the next frame
+                gray = cv.resize(gray, (XSIZE, YSIZE), interpolation=cv.INTER_NEAREST)
 
                 if counter >= middle_frame - 10 and counter <= middle_frame + 9:
                     flow = cv.calcOpticalFlowFarneback(prev_gray, gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
