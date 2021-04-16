@@ -9,6 +9,7 @@ import cv2
 from sklearn import preprocessing
 import Optical_Flow as flow
 from clr_callback import CyclicLR
+import padding
 
 # TODO: CYLCIC LEARNING EXAMPLE
 # MIN_LR = 1e-7
@@ -38,6 +39,8 @@ from clr_callback import CyclicLR
 XSIZE = 20
 YSIZE = 20
 STANFORD_LEARNING_RATE = 0.01
+MAX_HEIGHT = 965
+MAX_WIDTH = 997
 
 os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 
@@ -78,7 +81,8 @@ def Standford40():
     for x in train_files:
         img = cv2.imread("data/Stanford40/JPEGimages/"+x)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        resized_image = cv2.resize(img, (XSIZE, YSIZE), interpolation=cv2.INTER_NEAREST)
+        # resized_image = cv2.resize(img, (XSIZE, YSIZE), interpolation=cv2.INTER_NEAREST)
+        resized_image = padding.add_padding(img, MAX_HEIGHT, MAX_WIDTH)
         train_files_nd.append(resized_image)
     train_files = np.asarray(train_files_nd)
     train_labels = label_encoder.transform(train_labels)
@@ -88,7 +92,8 @@ def Standford40():
     for x in test_files:
         img = cv2.imread("data/Stanford40/JPEGimages/" + x)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        resized_image = cv2.resize(img, (XSIZE, YSIZE), interpolation=cv2.INTER_NEAREST)
+        # resized_image = cv2.resize(img, (XSIZE, YSIZE), interpolation=cv2.INTER_NEAREST)
+        resized_image = padding.add_padding(img, MAX_HEIGHT, MAX_WIDTH)
         test_files_nd.append(resized_image)
     test_files = np.asarray(test_files_nd)
     test_labels = label_encoder.transform(test_labels)
@@ -160,7 +165,7 @@ def plot_training_loss(history):
 
 def stanford_model(verbose=0):
     model = models.Sequential()
-    model.add(layers.Conv2D(filters=64, kernel_size=(3, 3), activation='relu', input_shape=(XSIZE, YSIZE, 3)))
+    model.add(layers.Conv2D(filters=64, kernel_size=(3, 3), activation='relu', input_shape=(MAX_HEIGHT, MAX_WIDTH, 3)))
     model.add(layers.Conv2D(filters=32, kernel_size=(3, 3), activation='relu'))
     model.add(layers.Conv2D(filters=16, kernel_size=(3, 3), activation='relu'))
 
@@ -205,7 +210,7 @@ def transfer_stanford_to_tvhi_model(st_model, verbose=0):
 
 def optical_flow_model(verbose=0):
     model = models.Sequential()
-    model.add(layers.Conv2D(filters=64, kernel_size=(3, 3), activation='relu', input_shape=(XSIZE, YSIZE, 3)))
+    model.add(layers.Conv2D(filters=64, kernel_size=(3, 3), activation='relu', input_shape=(MAX_HEIGHT, MAX_WIDTH, 40)))
     model.add(layers.Conv2D(filters=32, kernel_size=(3, 3), activation='relu'))
     model.add(layers.Conv2D(filters=16, kernel_size=(3, 3), activation='relu'))
 
@@ -227,42 +232,44 @@ def optical_flow_model(verbose=0):
 def main():
     # standford_train_images, standford_train_labels, standford_valid_images, standford_valid_labels, standford_test_images, standford_test_labels = Standford40()
 
-    # model = stanford_model()
-    # model.summary()
-
-    # history = get_history(model, standford_valid_images, standford_valid_labels, standford_train_images, standford_train_labels)
-    # plot_training_loss(history)
-    # model.save('Models/stanford_model')
-    st_model = tf.keras.models.load_model('Models/stanford_model')
-    tvhi_transfer_model = transfer_stanford_to_tvhi_model(st_model, verbose=1)
-
-
-    # TODO:
-    # TODO: ADD these datasets -> tvhi_train_images, tvhi_train_labels, tvhi_valid_images, tvhi_valid_labels
-    # TODO: 
-    # TODO: These consist of the middle image of all video clips, then we can train tvhi model with pretrained info on stanford40
-    # TODO:
-
-    # tvhi_train_files, tvhi_train_labels, tvhi_test_files, tvhi_test_labels = TV_HI()
-
     tvhi_train_files, tvhi_train_labels, tvhi_test_files, tvhi_test_labels = TV_HI()
 
-    # stacked_videos = flow.get_video_flow_stacks(tvhi_train_files)
-    # np.save("resized_flow.npy", stacked_videos)
-    tvhi_train_flow = np.load("resized_flow.npy", allow_pickle=True)
-    # print(tvhi_train_flow.shape)
-    # for i in tvhi_train_flow:
-    #     print(i.shape)
-    #     for j in i:
-    #         print(j.shape)    
-    #         for k in j:
-    #             print(k.shape)
-    #             break
-    #         break
-    #     break
+    # train_stacked_videos = flow.get_video_flow_stacks(tvhi_train_files)
+    # np.save("train_flow_stacks.npy", train_stacked_videos)
+    tvhi_train_flow_tmp = np.load("train_flow_stacks.npy", allow_pickle=True)
 
-    list = flow.get_middle_frames(tvhi_train_files)
-    stacked_videos = flow.get_video_flow_stacks(tvhi_train_files)
+    # test_stacked_videos = flow.get_video_flow_stacks(tvhi_test_files)
+    # np.save("test_flow_stacks.npy", test_stacked_videos)
+    tvhi_test_flow = np.load("test_flow_stacks.npy", allow_pickle=True)
+
+    # train_middle_frames = flow.get_middle_frames(tvhi_train_files)
+    # np.save("train_middle_frames.npy", train_middle_frames)
+    train_middle_frames_tmp = np.load("train_middle_frames.npy", allow_pickle=True)
+
+    # test_middle_frames = flow.get_middle_frames(tvhi_test_files)
+    # np.save("test_middle_frames.npy", test_middle_frames)
+    test_middle_frames = np.load("test_middle_frames.npy", allow_pickle=True)
+
+    middle_frames_train, flow_stacks_train, flow_labels_train = train_middle_frames_tmp[15:], tvhi_train_flow_tmp[15:], tvhi_train_flow_tmp[15:]
+    middle_frames_valid, flow_stacks_valid, flow_labels_valid = train_middle_frames_tmp[:15], tvhi_train_flow_tmp[:15], tvhi_train_flow_tmp[:15]
+
+    # h, w = padding.get_max_size(train_middle_frames)
+    # h, w = padding.get_max_size(test_middle_frames)
+    # h, w = padding.get_max_size(standford_train_images, h, w)
+    # h, w = padding.get_max_size(standford_valid_images, h, w)
+    # h, w = padding.get_max_size(standford_test_images, h, w)
+
+    # st_model = stanford_model()
+    # st_model.summary()
+    # history = get_history(st_model, standford_valid_images, standford_valid_labels, standford_train_images, standford_train_labels)
+    # plot_training_loss(history)
+    # st_model.save('Models/stanford_model')
+    # st_model = tf.keras.models.load_model('Models/stanford_model')
+    # tvhi_transfer_model = transfer_stanford_to_tvhi_model(st_model, verbose=1)
+
+    opt_flow_model = optical_flow_model()
+    opt_flow_model.summary()
+    # history = get_history(opt_flow_model, flow_stacks_valid, flow_labels_valid, flow_stacks_train, flow_labels_train)
 
 if __name__ == "__main__":
     main()
