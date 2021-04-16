@@ -8,6 +8,32 @@ import matplotlib.image as mpimg
 import cv2
 from sklearn import preprocessing
 import Optical_Flow as flow
+from clr_callback import CyclicLR
+
+# TODO: CYLCIC LEARNING EXAMPLE
+# MIN_LR = 1e-7
+# MAX_LR = 1e-2
+# BATCH_SIZE = 64
+# STEP_SIZE = 8
+# CLR_METHOD = "triangular2"
+# clr = CyclicLR(
+#             mode=CLR_METHOD,
+#             base_lr=MIN_LR,
+#             max_lr=MAX_LR,
+#             step_size=STEP_SIZE * (train_images.shape[0] // BATCH_SIZE))
+#
+#     history = model.fit(train_images, train_labels,
+#                             epochs=number_of_epochs,
+#                             validation_data=(test_train_images, test_train_labels),
+#                             callbacks=[clr])
+
+# TODO: REGULIZER EXAMPLE
+# layer = layers.Dense(
+#         units=64,
+#         kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-4),
+#         bias_regularizer=regularizers.l2(1e-4),
+#         activity_regularizer=regularizers.l2(1e-5)
+#     )
 
 XSIZE = 20
 YSIZE = 20
