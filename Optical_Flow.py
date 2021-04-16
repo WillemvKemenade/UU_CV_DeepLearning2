@@ -48,3 +48,27 @@ def get_video_flow_stacks(video_list):
         stacked_videos.append(frame_stack)
 
     return stacked_videos
+
+def get_middle_frames(video_list):
+    image_list = []
+    index = 1
+    print(str(len(video_list)) + "amount of videos")
+    for val in video_list:
+        print(str(index) + " out of " + str(len(video_list)))
+        index = index + 1
+
+        cap = cv.VideoCapture("data/TV-HI/" + val)
+        middle_frame = int(cap.get(cv.CAP_PROP_FRAME_COUNT) / 2)
+        counter = 1
+        while (cap.isOpened()):
+            ret, frame = cap.read()
+            if frame is not None:
+                gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+                if counter == middle_frame:
+                    cv.imshow('Testing', frame)
+                    image_list.append(frame)
+                    cap.release()
+                    # cv.waitKey(0)
+            counter = counter + 1
+
+    return np.asarray(image_list)

@@ -235,6 +235,8 @@ def main():
     #         break
     #     break
 
+    list = flow.get_middle_frames(tvhi_train_files)
+    stacked_videos = flow.get_video_flow_stacks(tvhi_train_files)
 
 if __name__ == "__main__":
     main()
