@@ -251,7 +251,7 @@ def plot_training_loss(history):
     plt.plot(np.log(history.history["val_loss"]), label='validation')
     plt.xlabel('Epoch')
     plt.ylabel('Log Loss')
-    plt.ylim([0.4, 0.6])
+    # plt.ylim([0.4, 0.6])
     plt.title("Loss Model Stanford")
     plt.legend(loc='upper right')
     plt.show()
