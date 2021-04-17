@@ -51,6 +51,26 @@ def Standford40():
         # print(f'Train files ({len(train_files)}):\n\t{train_files}')
         # print(f'Train labels ({len(train_labels)}):\n\t{train_labels}\n')
 
+    # TODO: DO A TRAIN VALIDATION SPLIT OF 10%(4000)
+    # TODO: 10 images per category
+    train_val_files = []
+    train_val_labels = []
+    strat_count = 0
+    total_count = 0
+    step_count = 0
+    for file in train_files:
+        if strat_count <= 9:
+            train_val_files.append(file)
+            train_val_labels.append(train_labels[strat_count + (step_count * 100)]) # get the label with the corresponding file
+            strat_count = strat_count + 1
+            total_count = total_count + 1
+        elif total_count < 99:
+            total_count = total_count + 1
+        else:
+            total_count = 0
+            strat_count = 0
+            step_count = step_count + 1
+
     with open('data/Stanford40/ImageSplits/test.txt', 'r') as f:
         test_files = list(map(str.strip, f.readlines()))
         test_labels = ['_'.join(name.split('_')[:-1]) for name in test_files]
@@ -66,9 +86,6 @@ def Standford40():
     # plt.show()
     # print(f'An image with the label - {train_labels[image_no]}')
 
-    # TODO: DO A TRAIN VALIDATION SPLIT OF 10%(400)
-    # TODO: CONVERT THE IMAGE TEXT PLACE NAMES INTO AN NDARRAY CHECK THE UU BOOKMARKS
-    #
     #Encodes the labels from strings to a number
     label_encoder = preprocessing.LabelEncoder()
     label_encoder.fit(action_categories)
@@ -88,6 +105,16 @@ def Standford40():
     train_files = np.asarray(train_files_nd)
     train_labels = label_encoder.transform(train_labels)
 
+    train_val_files_nd = []
+    for x in train_val_files:
+        img = cv2.imread("data/Stanford40/JPEGimages/"+x)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        resized_image = padding.pad_and_resize(img, YSIZE, XSIZE)
+        train_val_files_nd.append(resized_image)
+
+    valid_images = np.asarray(train_val_files_nd)
+    valid_labels = label_encoder.transform(train_val_labels)
+
     #load in the testing files and encode the labels
     test_files_nd = []
     for x in test_files:
@@ -100,9 +127,9 @@ def Standford40():
     test_files = np.asarray(test_files_nd)
     test_labels = label_encoder.transform(test_labels)
 
-    # TODO: SPLIT THESE CORRECTLY
-    (train_files, train_labels) = train_files[400:], train_labels[400:]
-    (valid_images, valid_labels) = train_files[:400], train_labels[:400]
+    # # TODO: SPLIT THESE CORRECTLY
+    # (train_files, train_labels) = train_files[400:], train_labels[400:]
+    # (valid_images, valid_labels) = train_files[:400], train_labels[:400]
 
     return train_files, train_labels, valid_images, valid_labels, test_files, test_labels
 
@@ -237,10 +264,15 @@ def optical_flow_model(verbose=0):
 
 
 def main():
-    # standford_train_images, standford_train_labels, standford_valid_images, standford_valid_labels, standford_test_images, standford_test_labels = Standford40()
+    standford_train_images, standford_train_labels, standford_valid_images, standford_valid_labels, standford_test_images, standford_test_labels = Standford40()
 
-    # tvhi_train_files, tvhi_train_labels, tvhi_test_files, tvhi_test_labels = TV_HI()
+    tvhi_train_files, tvhi_train_labels, tvhi_test_files, tvhi_test_labels = TV_HI()
+    ct = 1
+    for val in tvhi_train_files:
+        if val.find("highFive") != -1:
+            ct = ct + 1
 
+    print(ct)
 
     # np.save("train_flow_labels.npy", tvhi_train_labels)
     tvhi_train_labels = np.load("train_flow_labels.npy", allow_pickle=True)
