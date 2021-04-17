@@ -53,6 +53,8 @@ def Standford40():
 
     # TODO: DO A TRAIN VALIDATION SPLIT OF 10%(4000)
     # TODO: 10 images per category
+    train_files_wv = []
+    train_labels_wv = []
     train_val_files = []
     train_val_labels = []
     strat_count = 0
@@ -65,11 +67,18 @@ def Standford40():
             strat_count = strat_count + 1
             total_count = total_count + 1
         elif total_count < 99:
+            train_files_wv.append(file)
+            train_labels_wv.append(train_labels[strat_count + (step_count * 100)])
             total_count = total_count + 1
         else:
+            train_files_wv.append(file)
+            train_labels_wv.append(train_labels[strat_count + (step_count * 100)])
             total_count = 0
             strat_count = 0
             step_count = step_count + 1
+
+    train_files = train_files_wv
+    train_labels = train_labels_wv
 
     with open('data/Stanford40/ImageSplits/test.txt', 'r') as f:
         test_files = list(map(str.strip, f.readlines()))
@@ -127,10 +136,6 @@ def Standford40():
     test_files = np.asarray(test_files_nd)
     test_labels = label_encoder.transform(test_labels)
 
-    # # TODO: SPLIT THESE CORRECTLY
-    # (train_files, train_labels) = train_files[400:], train_labels[400:]
-    # (valid_images, valid_labels) = train_files[:400], train_labels[:400]
-
     return train_files, train_labels, valid_images, valid_labels, test_files, test_labels
 
 def TV_HI():
@@ -146,16 +151,75 @@ def TV_HI():
     classes = ['handShake', 'highFive', 'hug', 'kiss']  # we ignore the negative class
 
     # test set
-    set_1 = [f'{classes[c]}_{i:04d}.avi' for c in range(len(classes)) for i in set_1_indices[c]]
-    set_1_label = [int(c) for c in range(len(classes)) for i in set_1_indices[c]]
+    tvhi_test_files = [f'{classes[c]}_{i:04d}.avi' for c in range(len(classes)) for i in set_1_indices[c]]
+    tvhi_test_labels = [int(c) for c in range(len(classes)) for i in set_1_indices[c]]
     # print(f'Set 1 to be used for test ({len(set_1)}):\n\t{set_1}')
     # print(f'Set 1 labels ({len(set_1_label)}):\n\t{set_1_label}\n')   
 
     # training set
-    set_2 = [f'{classes[c]}_{i:04d}.avi' for c in range(len(classes)) for i in set_2_indices[c]]
-    set_2_label = [int(c) for c in range(len(classes)) for i in set_2_indices[c]]
+    tvhi_train_files = [f'{classes[c]}_{i:04d}.avi' for c in range(len(classes)) for i in set_2_indices[c]]
+    tvhi_train_labels = [int(c) for c in range(len(classes)) for i in set_2_indices[c]]
     # print(f'Set 2 to be used for train and validation ({len(set_2)}):\n\t{set_2}')
     # print(f'Set 2 labels ({len(set_2_label)}):\n\t{set_2_label}')
+
+    #TODO: validation 20%(this is because 10% woudln't evenly distribute it)
+    tvhi_train_files_wv = []
+    tvhi_train_labels_wv = []
+    tvhi_val_files = []
+    tvhi_val_labels = []
+    strat_count = 0
+    total_count = 0
+    step_count = 0
+    for file in tvhi_train_files:
+        if strat_count < 5:
+            tvhi_val_files.append(file)
+            tvhi_val_labels.append(tvhi_train_labels[strat_count + (step_count * 25)])  # get the label with the corresponding file
+            strat_count = strat_count + 1
+            total_count = total_count + 1
+        elif total_count < 24:
+            tvhi_train_files_wv.append(file)
+            tvhi_train_labels_wv.append(tvhi_train_labels[strat_count + (step_count * 25)])
+            total_count = total_count + 1
+        else:
+            tvhi_train_files_wv.append(file)
+            tvhi_train_labels_wv.append(tvhi_train_labels[strat_count + (step_count * 25)])
+            total_count = 0
+            strat_count = 0
+            step_count = step_count + 1
+
+    tvhi_train_files = tvhi_train_files_wv
+    tvhi_train_labels = tvhi_train_labels_wv
+
+    # np.save("tvhi_train_labels.npy", tvhi_train_labels)
+    tvhi_train_labels = np.load("tvhi_train_labels.npy", allow_pickle=True)
+
+    # train_stacked_videos = flow.get_video_flow_stacks(tvhi_train_files)
+    # np.save("tvhi_train_flow_files.npy", train_stacked_videos)
+    tvhi_train_flow_files = np.load("tvhi_train_flow_files.npy", allow_pickle=True)
+
+    # np.save("tvhi_val_labels.npy", tvhi_val_labels)
+    tvhi_val_labels = np.load("tvhi_val_labels.npy", allow_pickle=True)
+
+    # train_stacked_videos = flow.get_video_flow_stacks(tvhi_val_files)
+    # np.save("tvhi_val_flow_files.npy", train_stacked_videos)
+    tvhi_val_flow_files = np.load("tvhi_val_flow_files.npy", allow_pickle=True)
+
+    # np.save("tvhi_test_labels.npy", tvhi_test_labels)
+    tvhi_test_labels = np.load("tvhi_test_labels.npy", allow_pickle=True)
+
+    # test_stacked_videos = flow.get_video_flow_stacks(tvhi_test_files)
+    # np.save("tvhi_test_flow_files.npy", test_stacked_videos)
+    tvhi_test_flow_files = np.load("tvhi_test_flow_files.npy", allow_pickle=True)
+
+    # train_middle_frames = flow.get_middle_frames(tvhi_train_files)
+    # np.save("train_middle_frames_train_files.npy", train_middle_frames)
+    train_middle_frames_files = np.load("train_middle_frames_train_files.npy", allow_pickle=True)
+    train_middle_frames_labels = tvhi_train_labels
+
+    # test_middle_frames = flow.get_middle_frames(tvhi_test_files)
+    # np.save("train_middle_frames_test_files.npy", test_middle_frames)
+    test_middle_frames_files = np.load("train_middle_frames_test_files.npy", allow_pickle=True)
+    test_middle_frames_labels = tvhi_test_labels
 
     # video_no = 55
     # print(f'data/TV-HI/{set_2[video_no]}')
@@ -170,7 +234,7 @@ def TV_HI():
     # print(f'\n\nA video with the label - {set_2_label[video_no]}\n')
     # cap.release()
     # cv2.destroyAllWindows()
-    return set_1, set_1_label, set_2, set_2_label
+    return tvhi_train_flow_files, tvhi_train_labels, tvhi_val_flow_files, tvhi_val_labels, tvhi_test_flow_files, tvhi_test_labels, train_middle_frames_files, train_middle_frames_labels, test_middle_frames_files, test_middle_frames_labels
 
 def get_history(model, valid_test_images, valid_test_labels, train_images, train_labels):
     history = model.fit(train_images,
@@ -265,41 +329,7 @@ def optical_flow_model(verbose=0):
 
 def main():
     standford_train_images, standford_train_labels, standford_valid_images, standford_valid_labels, standford_test_images, standford_test_labels = Standford40()
-
-    tvhi_train_files, tvhi_train_labels, tvhi_test_files, tvhi_test_labels = TV_HI()
-    ct = 1
-    for val in tvhi_train_files:
-        if val.find("highFive") != -1:
-            ct = ct + 1
-
-    print(ct)
-
-    # np.save("train_flow_labels.npy", tvhi_train_labels)
-    tvhi_train_labels = np.load("train_flow_labels.npy", allow_pickle=True)
-
-    # np.save("test_flow_labels.npy", tvhi_test_labels)
-    tvhi_test_labels = np.load("test_flow_labels.npy", allow_pickle=True)
-
-    # train_stacked_videos = flow.get_video_flow_stacks(tvhi_train_files)
-    # np.save("train_flow_stacks.npy", train_stacked_videos)
-    tvhi_train_flow_tmp = np.load("train_flow_stacks.npy", allow_pickle=True)
-
-    # test_stacked_videos = flow.get_video_flow_stacks(tvhi_test_files)
-    # np.save("test_flow_stacks.npy", test_stacked_videos)
-    tvhi_test_flow = np.load("test_flow_stacks.npy", allow_pickle=True)
-
-    # train_middle_frames = flow.get_middle_frames(tvhi_train_files)
-    # np.save("train_middle_frames.npy", train_middle_frames)
-    train_middle_frames_tmp = np.load("train_middle_frames.npy", allow_pickle=True)
-
-    # test_middle_frames = flow.get_middle_frames(tvhi_test_files)
-    # np.save("test_middle_frames.npy", test_middle_frames)
-    test_middle_frames = np.load("test_middle_frames.npy", allow_pickle=True)
-
-
-    # TODO: SPLIT THESE CORRECTLY
-    middle_frames_train, flow_stacks_train, flow_labels_train = train_middle_frames_tmp[15:], tvhi_train_flow_tmp[15:], np.array(tvhi_train_labels)[15:]
-    middle_frames_valid, flow_stacks_valid, flow_labels_valid = train_middle_frames_tmp[:15], tvhi_train_flow_tmp[:15], np.array(tvhi_train_labels)[:15]
+    tvhi_train_flow_files, tvhi_train_labels, tvhi_val_flow_files, tvhi_val_labels, tvhi_test_flow_files, tvhi_test_labels, tvhi_train_middle_frames_files, train_middle_frames_labels, test_middle_frames_files, test_middle_frames_labels = TV_HI()
 
     # h, w = padding.get_max_size(train_middle_frames)
     # h, w = padding.get_max_size(test_middle_frames)
@@ -307,17 +337,17 @@ def main():
     # h, w = padding.get_max_size(standford_valid_images, h, w)
     # h, w = padding.get_max_size(standford_test_images, h, w)
 
-    # st_model = stanford_model()
-    # st_model.summary()
-    # history = get_history(st_model, standford_valid_images, standford_valid_labels, standford_train_images, standford_train_labels)
-    # plot_training_loss(history)
+    st_model = stanford_model()
+    st_model.summary()
+    history = get_history(st_model, standford_valid_images, standford_valid_labels, standford_train_images, standford_train_labels)
+    plot_training_loss(history)
     # st_model.save('Models/stanford_model')
     # st_model = tf.keras.models.load_model('Models/stanford_model')
     # tvhi_transfer_model = transfer_stanford_to_tvhi_model(st_model, verbose=1)
 
-    opt_flow_model = optical_flow_model()
-    opt_flow_model.summary()
-    history = get_history(opt_flow_model, flow_stacks_valid, flow_labels_valid, flow_stacks_train, flow_labels_train)
+    # opt_flow_model = optical_flow_model()
+    # opt_flow_model.summary()
+    # history = get_history(opt_flow_model, flow_stacks_valid, flow_labels_valid, flow_stacks_train, flow_labels_train)
     # plot_training_loss(history)
     # opt_flow_model.save('Models/opt_flow_model')
     # opt_flow_model = tf.keras.models.load_model('Models/opt_flow_model')
