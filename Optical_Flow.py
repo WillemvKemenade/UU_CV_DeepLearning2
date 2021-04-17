@@ -3,8 +3,8 @@ import numpy as np
 
 import padding
 
-XSIZE = 20
-YSIZE = 20
+XSIZE = 128
+YSIZE = 128
 MAX_HEIGHT = 965
 MAX_WIDTH = 997
 
@@ -19,7 +19,8 @@ def get_video_flow_stacks(video_list):
         middle_frame = int(cap.get(cv.CAP_PROP_FRAME_COUNT) / 2)
         ret, first_frame = cap.read()
         prev_gray = cv.cvtColor(first_frame, cv.COLOR_BGR2GRAY) # set the first frame to gray scale and use it for the first optical flow comparison
-        prev_gray = padding.add_padding(prev_gray, MAX_HEIGHT, MAX_WIDTH, gray=True)
+        # prev_gray = padding.add_padding(prev_gray, MAX_HEIGHT, MAX_WIDTH, gray=True)
+        prev_gray = padding.pad_and_resize(prev_gray, YSIZE, XSIZE, gray=True)
         # prev_gray = cv.resize(prev_gray, (XSIZE, YSIZE), interpolation=cv.INTER_NEAREST)
         counter = 1
         stacked_frames = []
@@ -30,7 +31,8 @@ def get_video_flow_stacks(video_list):
                 # cv.imshow("input", frame)
                 gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY) #gray scale of the next frame
                 # gray = cv.resize(gray, (XSIZE, YSIZE), interpolation=cv.INTER_NEAREST)
-                gray = padding.add_padding(gray, MAX_HEIGHT, MAX_WIDTH, gray=True)
+                # gray = padding.add_padding(gray, MAX_HEIGHT, MAX_WIDTH, gray=True)
+                gray = padding.pad_and_resize(gray, YSIZE, XSIZE, gray=True)
 
                 if counter >= middle_frame - 10 and counter <= middle_frame + 9:
                     flow = cv.calcOpticalFlowFarneback(prev_gray, gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
@@ -68,10 +70,11 @@ def get_middle_frames(video_list):
         counter = 1
         while (cap.isOpened()):
             ret, frame = cap.read()
-            frame = padding.add_padding(frame, MAX_HEIGHT, MAX_WIDTH)
+            # frame = padding.add_padding(frame, MAX_HEIGHT, MAX_WIDTH)
+            frame = padding.pad_and_resize(frame, YSIZE, XSIZE)
             if frame is not None:
                 if counter == middle_frame:
-                    # cv.imshow('Testing', frame)
+                    # cv.imshow('Testing', frame)						
                     image_list.append(frame)
                     cap.release()
                     # cv.waitKey(0)
