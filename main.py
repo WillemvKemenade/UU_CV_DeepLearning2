@@ -36,9 +36,9 @@ import padding
 #         activity_regularizer=regularizers.l2(1e-5)
 #     )
 
-XSIZE = 32
-YSIZE = 32
-STANFORD_LEARNING_RATE = 0.01
+XSIZE = 64
+YSIZE = 64
+STANFORD_LEARNING_RATE = 0.001
 MAX_HEIGHT = 965
 MAX_WIDTH = 997
 
@@ -219,29 +219,29 @@ def TV_HI():
     tvhi_train_files = tvhi_train_files_wv
     tvhi_train_labels = tvhi_train_labels_wv
 
-    # np.save("tvhi_train_labels.npy", tvhi_train_labels)
+    np.save("tvhi_train_labels.npy", tvhi_train_labels)
     tvhi_train_labels = np.load("tvhi_train_labels.npy", allow_pickle=True)
 
-    # train_stacked_videos = flow.get_video_flow_stacks(tvhi_train_files)
-    # np.save("tvhi_train_flow_files.npy", train_stacked_videos)
+    train_stacked_videos = flow.get_video_flow_stacks(tvhi_train_files)
+    np.save("tvhi_train_flow_files.npy", train_stacked_videos)
     tvhi_train_flow_files = np.load("tvhi_train_flow_files.npy", allow_pickle=True)
 
-    # np.save("tvhi_val_labels.npy", tvhi_val_labels)
+    np.save("tvhi_val_labels.npy", tvhi_val_labels)
     tvhi_val_labels = np.load("tvhi_val_labels.npy", allow_pickle=True)
 
-    # train_stacked_videos = flow.get_video_flow_stacks(tvhi_val_files)
-    # np.save("tvhi_val_flow_files.npy", train_stacked_videos)
+    train_stacked_videos = flow.get_video_flow_stacks(tvhi_val_files)
+    np.save("tvhi_val_flow_files.npy", train_stacked_videos)
     tvhi_val_flow_files = np.load("tvhi_val_flow_files.npy", allow_pickle=True)
 
-    # np.save("tvhi_test_labels.npy", tvhi_test_labels)
+    np.save("tvhi_test_labels.npy", tvhi_test_labels)
     tvhi_test_labels = np.load("tvhi_test_labels.npy", allow_pickle=True)
 
-    # test_stacked_videos = flow.get_video_flow_stacks(tvhi_test_files)
-    # np.save("tvhi_test_flow_files.npy", test_stacked_videos)
+    test_stacked_videos = flow.get_video_flow_stacks(tvhi_test_files)
+    np.save("tvhi_test_flow_files.npy", test_stacked_videos)
     tvhi_test_flow_files = np.load("tvhi_test_flow_files.npy", allow_pickle=True)
 
-    # train_middle_frames = flow.get_middle_frames(tvhi_train_files)
-    # np.save("train_middle_frames_train_files.npy", train_middle_frames)
+    train_middle_frames = flow.get_middle_frames(tvhi_train_files)
+    np.save("train_middle_frames_train_files.npy", train_middle_frames)
     train_middle_frames_files = np.load("train_middle_frames_train_files.npy", allow_pickle=True)
     train_middle_frames_labels = tvhi_train_labels
 
@@ -278,8 +278,8 @@ def TV_HI():
     v_data = v_data / 255
 
 
-    # test_middle_frames = flow.get_middle_frames(tvhi_test_files)
-    # np.save("train_middle_frames_test_files.npy", test_middle_frames)
+    test_middle_frames = flow.get_middle_frames(tvhi_test_files)
+    np.save("train_middle_frames_test_files.npy", test_middle_frames)
     test_middle_frames_files = np.load("train_middle_frames_test_files.npy", allow_pickle=True)
     test_middle_frames_labels = tvhi_test_labels
 
@@ -313,15 +313,31 @@ def get_history(model, valid_test_images, valid_test_labels, train_images, train
     return history
 
 
-def plot_training_loss(history):
+def plot_training_loss(history, title):
+    plt.plot(history.history["accuracy"], label='training')
+    plt.plot(history.history["val_accuracy"], label='validation')
+    plt.xlabel('Epoch')
+    plt.ylabel('accuracy')
+    # plt.ylim([0, 1.5])
+    plt.title(title)
+    plt.savefig("plots/" + title + ' accuracy.png')
+    plt.legend(loc='lower left')
+    plt.show()
     plt.plot(np.log(history.history["loss"]), label='training')
     plt.plot(np.log(history.history["val_loss"]), label='validation')
     plt.xlabel('Epoch')
     plt.ylabel('Log Loss')
     # plt.ylim([0, 1.5])
-    plt.title("Loss Model Stanford")
-    plt.legend(loc='upper right')
+    plt.title(title)
+    plt.savefig("plots/" + title + ' loss.png')
+    plt.legend(loc='lower left')
     plt.show()
+
+    print("TRAIN - Top-1 Accuracy = " + str(np.max(history.history["accuracy"])))
+    print("TRAIN - Loss = " + str(np.min(history.history["loss"])))
+
+    print("VALID - Top-1 Accuracy = " + str(np.max(history.history["val_accuracy"])))
+    print("VALID - Loss = " + str(np.min(history.history["val_loss"])))
 
 
 def stanford_model(verbose=0):
@@ -338,7 +354,7 @@ def stanford_model(verbose=0):
     model.add(layers.Dense(40, activation='softmax'))
 
     opt = tf.keras.optimizers.Adam(lr=STANFORD_LEARNING_RATE)
-    model.compile(optimizer='adam',
+    model.compile(optimizer=opt,
                   loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
                   metrics=['accuracy'])
 
@@ -406,22 +422,70 @@ def main():
     st_model = stanford_model()
     st_model.summary()
     history = get_history(st_model, standford_valid_images, standford_valid_labels, standford_train_images, standford_train_labels)
-    plot_training_loss(history)
+    plot_training_loss(history, "Stanford40 Model")
     st_model.save('Models/stanford_model')
     st_model = tf.keras.models.load_model('Models/stanford_model')
 
     tvhi_transfer_model = transfer_stanford_to_tvhi_model(st_model, verbose=1)
     history = get_history(st_model, valid_middle_frames, np.array(valid_middle_labels), train_middle_frames, np.array(train_middle_labels))
-    plot_training_loss(history)
+    plot_training_loss(history, "TVHI transfer model")
     tvhi_transfer_model.save('Models/transfer_model')
-    st_model = tf.keras.models.load_model('Models/transfer_model')
+    transfer_model = tf.keras.models.load_model('Models/transfer_model')
 
     opt_flow_model = optical_flow_model()
     opt_flow_model.summary()
     history = get_history(opt_flow_model, tvhi_val_flow_files, tvhi_val_labels, tvhi_train_flow_files, tvhi_train_labels)
-    plot_training_loss(history)
+    plot_training_loss(history, "Optical Flow Model")
     opt_flow_model.save('Models/opt_flow_model')
     opt_flow_model = tf.keras.models.load_model('Models/opt_flow_model')
+
+    ######## ADD STREAMS ##########
+
+    mergedOut = tf.keras.layers.Add()([transfer_model.layers[-2].output,opt_flow_model.layers[-2].output])
+    mergedOut = tf.keras.layers.Dense(4, activation='softmax', name='newlayer')(mergedOut)
+    dual_stream_model = tf.keras.models.Model([transfer_model.input, opt_flow_model.input], mergedOut)
+
+    opt = tf.keras.optimizers.Adam(lr=STANFORD_LEARNING_RATE/10)
+    dual_stream_model.compile(optimizer=opt,
+              loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+              metrics=['accuracy'])
+
+    dual_stream_model.summary()
+
+    history = get_history(dual_stream_model, [valid_middle_frames, tvhi_val_flow_files[:60]], valid_middle_labels, [train_middle_frames, tvhi_train_flow_files[:60]], train_middle_labels)
+    plot_training_loss(history, "Addition dual stream model")
+
+    ######## AVERAGE STREAMS ##########
+
+    mergedOut = tf.keras.layers.Average()([transfer_model.layers[-2].output,opt_flow_model.layers[-2].output])
+    mergedOut = tf.keras.layers.Dense(4, activation='softmax', name='newlayer')(mergedOut)
+    dual_stream_model = tf.keras.models.Model([transfer_model.input, opt_flow_model.input], mergedOut)
+
+    opt = tf.keras.optimizers.Adam(lr=STANFORD_LEARNING_RATE/10)
+    dual_stream_model.compile(optimizer=opt,
+              loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+              metrics=['accuracy'])
+
+    dual_stream_model.summary()
+
+    history = get_history(dual_stream_model, [valid_middle_frames, tvhi_val_flow_files[:60]], valid_middle_labels, [train_middle_frames, tvhi_train_flow_files[:60]], train_middle_labels)
+    plot_training_loss(history, "Average dual stream model")
+
+    ######## CONCAT STREAM ##########
+
+    mergedOut = tf.keras.layers.Concatenate(axis=1)([transfer_model.layers[-2].output,opt_flow_model.layers[-2].output])
+    mergedOut = tf.keras.layers.Dense(4, activation='softmax', name='newlayer')(mergedOut)
+    dual_stream_model = tf.keras.models.Model([transfer_model.input, opt_flow_model.input], mergedOut)
+
+    opt = tf.keras.optimizers.Adam(lr=STANFORD_LEARNING_RATE/10)
+    dual_stream_model.compile(optimizer=opt,
+              loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+              metrics=['accuracy'])
+
+    dual_stream_model.summary()
+
+    history = get_history(dual_stream_model, [valid_middle_frames, tvhi_val_flow_files[:60]], valid_middle_labels, [train_middle_frames, tvhi_train_flow_files[:60]], train_middle_labels)
+    plot_training_loss(history, "Concatenate dual stream model")
 
 if __name__ == "__main__":
     main()

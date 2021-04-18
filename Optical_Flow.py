@@ -3,8 +3,8 @@ import numpy as np
 
 import padding
 
-XSIZE = 32
-YSIZE = 32
+XSIZE = 64
+YSIZE = 64
 MAX_HEIGHT = 965
 MAX_WIDTH = 997
 
@@ -42,8 +42,8 @@ def get_video_flow_stacks(video_list):
                     vert = vert.astype('uint8')
                     # cv.imshow('Horizontal Component', horz)
                     # cv.imshow('Vertical Component', vert)
-                    stacked_frames.append(horz)
-                    stacked_frames.append(vert)
+                    stacked_frames.append(horz/255)
+                    stacked_frames.append(vert/255)
 
                 # Updates previous frame
                 prev_gray = gray
