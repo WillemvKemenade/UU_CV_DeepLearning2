@@ -153,6 +153,9 @@ def Standford40():
     test_files = np.asarray(test_files_nd)
     test_labels = label_encoder.transform(test_labels)
 
+    test_files = test_files.reshape(5532,YSIZE,XSIZE,1)
+    test_files = test_files / 255
+
     # import matplotlib.pyplot as plt
     # import matplotlib.image as mpimg
 
@@ -284,6 +287,7 @@ def TV_HI():
     test_middle_frames_labels = tvhi_test_labels
 
     test_middle_frames_files = np.array(test_middle_frames_files)
+    test_middle_frames_files = test_middle_frames_files.reshape(100,YSIZE,XSIZE,1)
     test_middle_frames_files = test_middle_frames_files / 255
     test_middle_frames_labels = np.array(test_middle_frames_labels)
 
@@ -413,31 +417,40 @@ def main():
     standford_train_images, standford_train_labels, standford_valid_images, standford_valid_labels, standford_test_images, standford_test_labels = Standford40()
     tvhi_train_flow_files, tvhi_train_labels, tvhi_val_flow_files, tvhi_val_labels, tvhi_test_flow_files, tvhi_test_labels, train_middle_frames, train_middle_labels, valid_middle_frames, valid_middle_labels, test_middle_frames, test_middle_labels = TV_HI()
 
-    # h, w = padding.get_max_size(train_middle_frames)
-    # h, w = padding.get_max_size(test_middle_frames)
-    # h, w = padding.get_max_size(standford_train_images, h, w)
-    # h, w = padding.get_max_size(standford_valid_images, h, w)
-    # h, w = padding.get_max_size(standford_test_images, h, w)
-
     st_model = stanford_model()
     st_model.summary()
     history = get_history(st_model, standford_valid_images, standford_valid_labels, standford_train_images, standford_train_labels)
     plot_training_loss(history, "Stanford40 Model")
     st_model.save('Models/stanford_model')
+
+    print("STANFORD40 MODEL")
     st_model = tf.keras.models.load_model('Models/stanford_model')
+    scores = st_model.evaluate(standford_test_images, standford_test_labels, verbose=0)
+    print("TEST  - Accuracy = ", str(scores[1]))
+    print("TEST  - Loss = ", str(scores[0]))
 
     tvhi_transfer_model = transfer_stanford_to_tvhi_model(st_model, verbose=1)
     history = get_history(st_model, valid_middle_frames, np.array(valid_middle_labels), train_middle_frames, np.array(train_middle_labels))
     plot_training_loss(history, "TVHI transfer model")
     tvhi_transfer_model.save('Models/transfer_model')
+
+    print("TRANSFER MODEL")
     transfer_model = tf.keras.models.load_model('Models/transfer_model')
+    scores = transfer_model.evaluate(test_middle_frames, test_middle_labels, verbose=0)
+    print("TEST  - Accuracy = ", str(scores[1]))
+    print("TEST  - Loss = ", str(scores[0]))
 
     opt_flow_model = optical_flow_model()
     opt_flow_model.summary()
     history = get_history(opt_flow_model, tvhi_val_flow_files, tvhi_val_labels, tvhi_train_flow_files, tvhi_train_labels)
     plot_training_loss(history, "Optical Flow Model")
     opt_flow_model.save('Models/opt_flow_model')
+
+    print("OPT FLOW MODEL")
     opt_flow_model = tf.keras.models.load_model('Models/opt_flow_model')
+    scores = opt_flow_model.evaluate(tvhi_test_flow_files, tvhi_test_labels, verbose=0)
+    print("TEST  - Accuracy = ", str(scores[1]))
+    print("TEST  - Loss = ", str(scores[0]))
 
     ######## ADD STREAMS ##########
 
@@ -455,6 +468,14 @@ def main():
     history = get_history(dual_stream_model, [valid_middle_frames, tvhi_val_flow_files[:60]], valid_middle_labels, [train_middle_frames, tvhi_train_flow_files[:60]], train_middle_labels)
     plot_training_loss(history, "Addition dual stream model")
 
+    dual_stream_model.save('Models/Addition_fusion_model')
+
+    print("ADDITION MODEL")
+    Addition_fusion_model = tf.keras.models.load_model('Models/Addition_fusion_model')
+    scores = Addition_fusion_model.evaluate([test_middle_frames, tvhi_test_flow_files], [test_middle_labels, tvhi_test_labels], verbose=0)
+    print("TEST  - Accuracy = ", str(scores[1]))
+    print("TEST  - Loss = ", str(scores[0]))
+
     ######## AVERAGE STREAMS ##########
 
     mergedOut = tf.keras.layers.Average()([transfer_model.layers[-2].output,opt_flow_model.layers[-2].output])
@@ -471,6 +492,14 @@ def main():
     history = get_history(dual_stream_model, [valid_middle_frames, tvhi_val_flow_files[:60]], valid_middle_labels, [train_middle_frames, tvhi_train_flow_files[:60]], train_middle_labels)
     plot_training_loss(history, "Average dual stream model")
 
+    dual_stream_model.save('Models/Average_fusion_model')
+
+    print("AVERAGE MODEL")
+    Average_fusion_model = tf.keras.models.load_model('Models/Average_fusion_model')
+    scores = Average_fusion_model.evaluate([test_middle_frames, tvhi_test_flow_files], [test_middle_labels, tvhi_test_labels], verbose=0)
+    print("TEST  - Accuracy = ", str(scores[1]))
+    print("TEST  - Loss = ", str(scores[0]))
+
     ######## CONCAT STREAM ##########
 
     mergedOut = tf.keras.layers.Concatenate(axis=1)([transfer_model.layers[-2].output,opt_flow_model.layers[-2].output])
@@ -486,6 +515,14 @@ def main():
 
     history = get_history(dual_stream_model, [valid_middle_frames, tvhi_val_flow_files[:60]], valid_middle_labels, [train_middle_frames, tvhi_train_flow_files[:60]], train_middle_labels)
     plot_training_loss(history, "Concatenate dual stream model")
+
+    dual_stream_model.save('Models/Concatenate_fusion_model')
+
+    print("CONCATINATION MODEL")
+    Concatenate_fusion_model = tf.keras.models.load_model('Models/Concatenate_fusion_model')
+    scores = Concatenate_fusion_model.evaluate([test_middle_frames, tvhi_test_flow_files], [test_middle_labels, tvhi_test_labels], verbose=0)
+    print("TEST  - Accuracy = ", str(scores[1]))
+    print("TEST  - Loss = ", str(scores[0]))
 
 if __name__ == "__main__":
     main()
