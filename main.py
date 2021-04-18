@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
-from tensorflow.keras import datasets, layers, models
+from tensorflow.keras import datasets, layers, models, regularizers
 from sklearn.model_selection import KFold
 import os
 import matplotlib.image as mpimg
@@ -283,7 +283,7 @@ def plot_training_loss(history):
     plt.plot(np.log(history.history["val_loss"]), label='validation')
     plt.xlabel('Epoch')
     plt.ylabel('Log Loss')
-    # plt.ylim([0.4, 0.6])
+    # plt.ylim([0, 1.5])
     plt.title("Loss Model Stanford")
     plt.legend(loc='upper right')
     plt.show()
@@ -291,16 +291,15 @@ def plot_training_loss(history):
 
 def stanford_model(verbose=0):
     model = models.Sequential()
-    model.add(layers.Conv2D(filters=64, kernel_size=(3, 3), activation='relu', input_shape=(YSIZE, XSIZE, 1)))
-    model.add(layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
-    model.add(layers.Conv2D(filters=32, kernel_size=(3, 3), activation='relu'))
-    model.add(layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
-    model.add(layers.Conv2D(filters=16, kernel_size=(3, 3), activation='relu'))
+    model.add(layers.Conv2D(filters=8, kernel_size=(3, 3), activation='relu', input_shape=(YSIZE, XSIZE, 1)))
+    model.add(layers.MaxPooling2D(pool_size=(1, 1), strides=(1, 1)))
+    model.add(layers.Conv2D(filters=6, kernel_size=(3, 3), activation='relu'))
+    model.add(layers.MaxPooling2D(pool_size=(1, 1), strides=(1, 1)))
+    model.add(layers.Conv2D(filters=4, kernel_size=(3, 3), activation='relu'))
     
 
     model.add(layers.Flatten())
-
-    model.add(layers.Dense(1028, activation='relu'))
+    model.add(layers.Dense(128, activation='relu'))
     model.add(layers.Dense(40, activation='softmax'))
 
     opt = tf.keras.optimizers.Adam(lr=STANFORD_LEARNING_RATE)
