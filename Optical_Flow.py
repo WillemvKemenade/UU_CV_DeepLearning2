@@ -3,8 +3,8 @@ import numpy as np
 
 import padding
 
-XSIZE = 128
-YSIZE = 128
+XSIZE = 32
+YSIZE = 32
 MAX_HEIGHT = 965
 MAX_WIDTH = 997
 
@@ -71,7 +71,8 @@ def get_middle_frames(video_list):
         while (cap.isOpened()):
             ret, frame = cap.read()
             # frame = padding.add_padding(frame, MAX_HEIGHT, MAX_WIDTH)
-            frame = padding.pad_and_resize(frame, YSIZE, XSIZE)
+            frame = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+            frame = padding.pad_and_resize(frame, YSIZE, XSIZE, gray=True)
             if frame is not None:
                 if counter == middle_frame:
                     # cv.imshow('Testing', frame)						

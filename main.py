@@ -200,22 +200,19 @@ def TV_HI():
     tvhi_val_files = []
     tvhi_val_labels = []
     strat_count = 0
-    total_count = 0
     step_count = 0
     for file in tvhi_train_files:
         if strat_count < 5:
             tvhi_val_files.append(file)
             tvhi_val_labels.append(tvhi_train_labels[strat_count + (step_count * 25)])  # get the label with the corresponding file
             strat_count = strat_count + 1
-            total_count = total_count + 1
-        elif total_count < 24:
+        elif strat_count < 24:
             tvhi_train_files_wv.append(file)
             tvhi_train_labels_wv.append(tvhi_train_labels[strat_count + (step_count * 25)])
-            total_count = total_count + 1
+            strat_count = strat_count + 1
         else:
             tvhi_train_files_wv.append(file)
             tvhi_train_labels_wv.append(tvhi_train_labels[strat_count + (step_count * 25)])
-            total_count = 0
             strat_count = 0
             step_count = step_count + 1
 
@@ -248,10 +245,48 @@ def TV_HI():
     train_middle_frames_files = np.load("train_middle_frames_train_files.npy", allow_pickle=True)
     train_middle_frames_labels = tvhi_train_labels
 
+    t_data = []
+    t_label = []
+    v_data = []
+    v_label = []
+    strat_count = 0
+    step_count = 0
+    for file in train_middle_frames_files:
+        if strat_count < 5:
+            v_data.append(file)
+            v_label.append(train_middle_frames_labels[strat_count + (step_count * 25)]) # get the label with the corresponding file
+            strat_count = strat_count + 1
+        elif strat_count < 24:
+            t_data.append(file)
+            t_label.append(train_middle_frames_labels[strat_count + (step_count * 25)])
+            strat_count = strat_count + 1
+        else:
+            t_data.append(file)
+            t_label.append(train_middle_frames_labels[strat_count + (step_count * 25)])
+            strat_count = 0
+            step_count = step_count + 1
+
+    t_data = np.array(t_data)
+    t_label = np.array(t_label)
+    v_data = np.array(v_data)
+    v_label = np.array(v_label)
+
+    t_data = t_data.reshape(60,YSIZE,XSIZE,1)
+    v_data = v_data.reshape(20,YSIZE,XSIZE,1)
+
+    t_data = t_data / 255
+    v_data = v_data / 255
+
+
     # test_middle_frames = flow.get_middle_frames(tvhi_test_files)
     # np.save("train_middle_frames_test_files.npy", test_middle_frames)
     test_middle_frames_files = np.load("train_middle_frames_test_files.npy", allow_pickle=True)
     test_middle_frames_labels = tvhi_test_labels
+
+    test_middle_frames_files = np.array(test_middle_frames_files)
+    test_middle_frames_files = test_middle_frames_files / 255
+    test_middle_frames_labels = np.array(test_middle_frames_labels)
+
 
     # video_no = 55
     # print(f'data/TV-HI/{set_2[video_no]}')
@@ -266,7 +301,7 @@ def TV_HI():
     # print(f'\n\nA video with the label - {set_2_label[video_no]}\n')
     # cap.release()
     # cv2.destroyAllWindows()
-    return tvhi_train_flow_files, tvhi_train_labels, tvhi_val_flow_files, tvhi_val_labels, tvhi_test_flow_files, tvhi_test_labels, train_middle_frames_files, train_middle_frames_labels, test_middle_frames_files, test_middle_frames_labels
+    return tvhi_train_flow_files, tvhi_train_labels, tvhi_val_flow_files, tvhi_val_labels, tvhi_test_flow_files, tvhi_test_labels, t_data, t_label, v_data, v_label, test_middle_frames_files, test_middle_frames_labels
 
 def get_history(model, valid_test_images, valid_test_labels, train_images, train_labels):
     history = model.fit(train_images,
@@ -291,11 +326,11 @@ def plot_training_loss(history):
 
 def stanford_model(verbose=0):
     model = models.Sequential()
-    model.add(layers.Conv2D(filters=8, kernel_size=(3, 3), activation='relu', input_shape=(YSIZE, XSIZE, 1)))
-    model.add(layers.MaxPooling2D(pool_size=(1, 1), strides=(1, 1)))
-    model.add(layers.Conv2D(filters=6, kernel_size=(3, 3), activation='relu'))
-    model.add(layers.MaxPooling2D(pool_size=(1, 1), strides=(1, 1)))
-    model.add(layers.Conv2D(filters=4, kernel_size=(3, 3), activation='relu'))
+    model.add(layers.Conv2D(filters=64, kernel_size=(3, 3), activation='relu', input_shape=(YSIZE, XSIZE, 1)))
+    model.add(layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
+    model.add(layers.Conv2D(filters=32, kernel_size=(3, 3), activation='relu'))
+    model.add(layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
+    model.add(layers.Conv2D(filters=16, kernel_size=(3, 3), activation='relu'))
     
 
     model.add(layers.Flatten())
@@ -321,7 +356,7 @@ def transfer_stanford_to_tvhi_model(st_model, verbose=0):
         layer.trainable = False
 
     # Add new output layer to the Stanford layer instead of the original output layer
-    new_output_layer = layers.Dense(5, activation='softmax', name="newlayer")(st_model.layers[-2].output)
+    new_output_layer = layers.Dense(4, activation='softmax', name="newlayer")(st_model.layers[-2].output)
     tvhi_transfer_model = tf.keras.models.Model(st_model.input, new_output_layer)
 
     # Compile new model with 1/10 of the original learning rate
@@ -346,8 +381,7 @@ def optical_flow_model(verbose=0):
 
     model.add(layers.Flatten())
     model.add(layers.Dense(128, activation='relu'))
-    model.add(layers.Dense(64, activation='relu'))
-    model.add(layers.Dense(5, activation='softmax'))
+    model.add(layers.Dense(4, activation='softmax'))
 
     opt = tf.keras.optimizers.Adam(lr=STANFORD_LEARNING_RATE)
     model.compile(optimizer=opt,
@@ -361,7 +395,7 @@ def optical_flow_model(verbose=0):
 
 def main():
     standford_train_images, standford_train_labels, standford_valid_images, standford_valid_labels, standford_test_images, standford_test_labels = Standford40()
-    # tvhi_train_flow_files, tvhi_train_labels, tvhi_val_flow_files, tvhi_val_labels, tvhi_test_flow_files, tvhi_test_labels, tvhi_train_middle_frames_files, train_middle_frames_labels, test_middle_frames_files, test_middle_frames_labels = TV_HI()
+    tvhi_train_flow_files, tvhi_train_labels, tvhi_val_flow_files, tvhi_val_labels, tvhi_test_flow_files, tvhi_test_labels, train_middle_frames, train_middle_labels, valid_middle_frames, valid_middle_labels, test_middle_frames, test_middle_labels = TV_HI()
 
     # h, w = padding.get_max_size(train_middle_frames)
     # h, w = padding.get_max_size(test_middle_frames)
@@ -373,16 +407,21 @@ def main():
     st_model.summary()
     history = get_history(st_model, standford_valid_images, standford_valid_labels, standford_train_images, standford_train_labels)
     plot_training_loss(history)
-    # st_model.save('Models/stanford_model')
-    # st_model = tf.keras.models.load_model('Models/stanford_model')
-    # tvhi_transfer_model = transfer_stanford_to_tvhi_model(st_model, verbose=1)
+    st_model.save('Models/stanford_model')
+    st_model = tf.keras.models.load_model('Models/stanford_model')
 
-    # opt_flow_model = optical_flow_model()
-    # opt_flow_model.summary()
-    # history = get_history(opt_flow_model, flow_stacks_valid, flow_labels_valid, flow_stacks_train, flow_labels_train)
-    # plot_training_loss(history)
-    # opt_flow_model.save('Models/opt_flow_model')
-    # opt_flow_model = tf.keras.models.load_model('Models/opt_flow_model')
+    tvhi_transfer_model = transfer_stanford_to_tvhi_model(st_model, verbose=1)
+    history = get_history(st_model, valid_middle_frames, np.array(valid_middle_labels), train_middle_frames, np.array(train_middle_labels))
+    plot_training_loss(history)
+    tvhi_transfer_model.save('Models/transfer_model')
+    st_model = tf.keras.models.load_model('Models/transfer_model')
+
+    opt_flow_model = optical_flow_model()
+    opt_flow_model.summary()
+    history = get_history(opt_flow_model, tvhi_val_flow_files, tvhi_val_labels, tvhi_train_flow_files, tvhi_train_labels)
+    plot_training_loss(history)
+    opt_flow_model.save('Models/opt_flow_model')
+    opt_flow_model = tf.keras.models.load_model('Models/opt_flow_model')
 
 if __name__ == "__main__":
     main()
