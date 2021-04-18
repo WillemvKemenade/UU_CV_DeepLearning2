@@ -11,31 +11,6 @@ import Optical_Flow as flow
 from clr_callback import CyclicLR
 import padding
 
-# TODO: CYLCIC LEARNING EXAMPLE
-# MIN_LR = 1e-7
-# MAX_LR = 1e-2
-# BATCH_SIZE = 64
-# STEP_SIZE = 8
-# CLR_METHOD = "triangular2"
-# clr = CyclicLR(
-#             mode=CLR_METHOD,
-#             base_lr=MIN_LR,
-#             max_lr=MAX_LR,
-#             step_size=STEP_SIZE * (train_images.shape[0] // BATCH_SIZE))
-#
-#     history = model.fit(train_images, train_labels,
-#                             epochs=number_of_epochs,
-#                             validation_data=(test_train_images, test_train_labels),
-#                             callbacks=[clr])
-
-# TODO: REGULIZER EXAMPLE
-# layer = layers.Dense(
-#         units=64,
-#         kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-4),
-#         bias_regularizer=regularizers.l2(1e-4),
-#         activity_regularizer=regularizers.l2(1e-5)
-#     )
-
 XSIZE = 64
 YSIZE = 64
 STANFORD_LEARNING_RATE = 0.001
@@ -50,10 +25,6 @@ def Standford40():
         train_labels = ['_'.join(name.split('_')[:-1]) for name in train_files]
         # print(f'Train files ({len(train_files)}):\n\t{train_files}')
         # print(f'Train labels ({len(train_labels)}):\n\t{train_labels}\n')
-
-    # TODO: DO A TRAIN VALIDATION SPLIT OF 10%(4000)
-    # TODO: 10 images per category
-
 
     train_files_wv = []
     train_labels_wv = []
@@ -79,17 +50,6 @@ def Standford40():
     train_files = train_files_wv
     train_labels = train_labels_wv
 
-    # print(np.array(train_files).shape)
-    # print(np.array(train_labels).shape)
-
-    # print(np.array(train_files)[150])
-    # print(np.array(train_labels)[150])
-    # print(np.array(train_val_files)[150])
-    # print(np.array(train_val_labels)[150])
-
-    # print(np.array(train_val_files).shape)
-    # print(np.array(train_val_labels).shape)
-
 
 
     with open('data/Stanford40/ImageSplits/test.txt', 'r') as f:
@@ -101,26 +61,15 @@ def Standford40():
     action_categories = sorted(list(set(['_'.join(name.split('_')[:-1]) for name in train_files])))
     # print(f'Action categories ({len(action_categories)}):\n{action_categories}')
 
-    # image_no = 234  # change this to a number between [0, 3999] and you can see a different training image
-    # img = mpimg.imread(f'data/Stanford40/JPEGimages/{train_files[image_no]}')
-    # imgplot = plt.imshow(img)
-    # plt.show()
-    # print(f'An image with the label - {train_labels[image_no]}')
-
     #Encodes the labels from strings to a number
     label_encoder = preprocessing.LabelEncoder()
     label_encoder.fit(action_categories)
-
-    # print(label_encoder.transform(["cooking"])) gives the number from string
-    # print(label_encoder.inverse_transform([5])) gives the string from the number
 
     #Load in the training files and encode the labels
     train_files_nd = []
     for x in train_files:
         img = cv2.imread("data/Stanford40/JPEGimages/"+x)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        # resized_image = cv2.resize(img, (XSIZE, YSIZE), interpolation=cv2.INTER_NEAREST)
-        # resized_image = padding.add_padding(img, MAX_HEIGHT, MAX_WIDTH)
         resized_image = padding.pad_and_resize(img, YSIZE, XSIZE, gray=True)
         train_files_nd.append(resized_image)
     train_files = np.asarray(train_files_nd)
@@ -132,8 +81,6 @@ def Standford40():
     for x in train_val_files:
         img = cv2.imread("data/Stanford40/JPEGimages/"+x)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        # resized_image = cv2.resize(img, (XSIZE, YSIZE), interpolation=cv2.INTER_NEAREST)
-        # resized_image = padding.add_padding(img, MAX_HEIGHT, MAX_WIDTH)
         resized_image = padding.pad_and_resize(img, YSIZE, XSIZE, gray=True)
         train_val_files_nd.append(resized_image)
     valid_images = np.asarray(train_val_files_nd)
@@ -146,8 +93,6 @@ def Standford40():
     for x in test_files:
         img = cv2.imread("data/Stanford40/JPEGimages/" + x)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        # resized_image = cv2.resize(img, (XSIZE, YSIZE), interpolation=cv2.INTER_NEAREST)
-        # resized_image = padding.add_padding(img, MAX_HEIGHT, MAX_WIDTH)
         resized_image = padding.pad_and_resize(img, YSIZE, XSIZE, gray=True)
         test_files_nd.append(resized_image)
     test_files = np.asarray(test_files_nd)
@@ -155,21 +100,6 @@ def Standford40():
 
     test_files = test_files.reshape(5532,YSIZE,XSIZE,1)
     test_files = test_files / 255
-
-    # import matplotlib.pyplot as plt
-    # import matplotlib.image as mpimg
-
-    # # print(np.array(train_files)[150])
-    # print(np.array(train_labels)[150])
-
-    # plt.imshow(train_files[150])
-    # plt.show()
-
-    # # print(np.array(valid_images)[150])
-    # print(np.array(valid_labels)[150])
-
-    # plt.imshow(valid_images[150])
-    # plt.show()
 
     return train_files, train_labels, valid_images, valid_labels, test_files, test_labels
 
@@ -291,20 +221,6 @@ def TV_HI():
     test_middle_frames_files = test_middle_frames_files / 255
     test_middle_frames_labels = np.array(test_middle_frames_labels)
 
-
-    # video_no = 55
-    # print(f'data/TV-HI/{set_2[video_no]}')
-    # cap = cv2.VideoCapture(f'data/TV-HI/{set_2[video_no]}')
-    # while (cap.isOpened()):
-    #     ret, frame = cap.read()
-    #
-    #     gray = cv2.cvtColor(frame, cv2.COLORMAP_HOT)
-    #     cv2.imshow('frame', gray)
-    #     if cv2.waitKey(1) & 0xFF == ord('q'):
-    #         break
-    # print(f'\n\nA video with the label - {set_2_label[video_no]}\n')
-    # cap.release()
-    # cv2.destroyAllWindows()
     return tvhi_train_flow_files, tvhi_train_labels, tvhi_val_flow_files, tvhi_val_labels, tvhi_test_flow_files, tvhi_test_labels, t_data, t_label, v_data, v_label, test_middle_frames_files, test_middle_frames_labels
 
 def get_history(model, valid_test_images, valid_test_labels, train_images, train_labels):
@@ -314,6 +230,22 @@ def get_history(model, valid_test_images, valid_test_labels, train_images, train
                         epochs=20,
                         verbose=1,
                         validation_data=(valid_test_images, valid_test_labels))
+    # Example cyclic learning code
+    # MIN_LR = 1e-7
+    # MAX_LR = 1e-2
+    # BATCH_SIZE = 64
+    # STEP_SIZE = 8
+    # CLR_METHOD = "triangular2"
+    # clr = CyclicLR(
+    #             mode=CLR_METHOD,
+    #             base_lr=MIN_LR,
+    #             max_lr=MAX_LR,
+    #             step_size=STEP_SIZE * (train_images.shape[0] // BATCH_SIZE))
+    #
+    #     history = model.fit(train_images, train_labels,
+    #                             epochs=number_of_epochs,
+    #                             validation_data=(test_train_images, test_train_labels),
+    #                             callbacks=[clr])
     return history
 
 
@@ -331,7 +263,6 @@ def plot_training_loss(history, title):
     plt.plot(np.log(history.history["val_loss"]), label='validation')
     plt.xlabel('Epoch')
     plt.ylabel('Log Loss')
-    # plt.ylim([0, 1.5])
     plt.title(title)
     plt.savefig("plots/" + title + ' loss.png')
     plt.legend(loc='lower left')
@@ -346,6 +277,7 @@ def plot_training_loss(history, title):
 
 def stanford_model(verbose=0):
     model = models.Sequential()
+    # Example regularizer model.add(layers.Conv2D(filters=32, kernel_size=(3, 3), activation='relu', kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-4)))
     model.add(layers.Conv2D(filters=64, kernel_size=(3, 3), activation='relu', input_shape=(YSIZE, XSIZE, 1)))
     model.add(layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
     model.add(layers.Conv2D(filters=32, kernel_size=(3, 3), activation='relu'))
