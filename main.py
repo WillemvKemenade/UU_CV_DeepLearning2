@@ -36,8 +36,8 @@ import padding
 #         activity_regularizer=regularizers.l2(1e-5)
 #     )
 
-XSIZE = 128
-YSIZE = 128
+XSIZE = 32
+YSIZE = 32
 STANFORD_LEARNING_RATE = 0.01
 MAX_HEIGHT = 965
 MAX_WIDTH = 997
@@ -53,32 +53,44 @@ def Standford40():
 
     # TODO: DO A TRAIN VALIDATION SPLIT OF 10%(4000)
     # TODO: 10 images per category
+
+
     train_files_wv = []
     train_labels_wv = []
     train_val_files = []
     train_val_labels = []
     strat_count = 0
-    total_count = 0
     step_count = 0
     for file in train_files:
         if strat_count <= 9:
             train_val_files.append(file)
             train_val_labels.append(train_labels[strat_count + (step_count * 100)]) # get the label with the corresponding file
             strat_count = strat_count + 1
-            total_count = total_count + 1
-        elif total_count < 99:
+        elif strat_count < 99:
             train_files_wv.append(file)
             train_labels_wv.append(train_labels[strat_count + (step_count * 100)])
-            total_count = total_count + 1
+            strat_count = strat_count + 1
         else:
             train_files_wv.append(file)
             train_labels_wv.append(train_labels[strat_count + (step_count * 100)])
-            total_count = 0
             strat_count = 0
             step_count = step_count + 1
 
     train_files = train_files_wv
     train_labels = train_labels_wv
+
+    # print(np.array(train_files).shape)
+    # print(np.array(train_labels).shape)
+
+    # print(np.array(train_files)[150])
+    # print(np.array(train_labels)[150])
+    # print(np.array(train_val_files)[150])
+    # print(np.array(train_val_labels)[150])
+
+    # print(np.array(train_val_files).shape)
+    # print(np.array(train_val_labels).shape)
+
+
 
     with open('data/Stanford40/ImageSplits/test.txt', 'r') as f:
         test_files = list(map(str.strip, f.readlines()))
@@ -106,35 +118,55 @@ def Standford40():
     train_files_nd = []
     for x in train_files:
         img = cv2.imread("data/Stanford40/JPEGimages/"+x)
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         # resized_image = cv2.resize(img, (XSIZE, YSIZE), interpolation=cv2.INTER_NEAREST)
         # resized_image = padding.add_padding(img, MAX_HEIGHT, MAX_WIDTH)
-        resized_image = padding.pad_and_resize(img, YSIZE, XSIZE)
+        resized_image = padding.pad_and_resize(img, YSIZE, XSIZE, gray=True)
         train_files_nd.append(resized_image)
     train_files = np.asarray(train_files_nd)
+    train_files = train_files.reshape(3600,YSIZE,XSIZE,1)
+    train_files = train_files / 255
     train_labels = label_encoder.transform(train_labels)
 
     train_val_files_nd = []
     for x in train_val_files:
         img = cv2.imread("data/Stanford40/JPEGimages/"+x)
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        resized_image = padding.pad_and_resize(img, YSIZE, XSIZE)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        # resized_image = cv2.resize(img, (XSIZE, YSIZE), interpolation=cv2.INTER_NEAREST)
+        # resized_image = padding.add_padding(img, MAX_HEIGHT, MAX_WIDTH)
+        resized_image = padding.pad_and_resize(img, YSIZE, XSIZE, gray=True)
         train_val_files_nd.append(resized_image)
-
     valid_images = np.asarray(train_val_files_nd)
+    valid_images = valid_images.reshape(400,YSIZE,XSIZE,1)
+    valid_images = valid_images / 255
     valid_labels = label_encoder.transform(train_val_labels)
 
     #load in the testing files and encode the labels
     test_files_nd = []
     for x in test_files:
         img = cv2.imread("data/Stanford40/JPEGimages/" + x)
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         # resized_image = cv2.resize(img, (XSIZE, YSIZE), interpolation=cv2.INTER_NEAREST)
         # resized_image = padding.add_padding(img, MAX_HEIGHT, MAX_WIDTH)
-        resized_image = padding.pad_and_resize(img, YSIZE, XSIZE)
+        resized_image = padding.pad_and_resize(img, YSIZE, XSIZE, gray=True)
         test_files_nd.append(resized_image)
     test_files = np.asarray(test_files_nd)
     test_labels = label_encoder.transform(test_labels)
+
+    # import matplotlib.pyplot as plt
+    # import matplotlib.image as mpimg
+
+    # # print(np.array(train_files)[150])
+    # print(np.array(train_labels)[150])
+
+    # plt.imshow(train_files[150])
+    # plt.show()
+
+    # # print(np.array(valid_images)[150])
+    # print(np.array(valid_labels)[150])
+
+    # plt.imshow(valid_images[150])
+    # plt.show()
 
     return train_files, train_labels, valid_images, valid_labels, test_files, test_labels
 
@@ -239,8 +271,8 @@ def TV_HI():
 def get_history(model, valid_test_images, valid_test_labels, train_images, train_labels):
     history = model.fit(train_images,
                         train_labels,
-                        batch_size=8,
-                        epochs=10,
+                        batch_size=32,
+                        epochs=20,
                         verbose=1,
                         validation_data=(valid_test_images, valid_test_labels))
     return history
@@ -259,19 +291,20 @@ def plot_training_loss(history):
 
 def stanford_model(verbose=0):
     model = models.Sequential()
-    model.add(layers.Conv2D(filters=64, kernel_size=(3, 3), activation='relu', input_shape=(YSIZE, XSIZE, 3)))
+    model.add(layers.Conv2D(filters=64, kernel_size=(3, 3), activation='relu', input_shape=(YSIZE, XSIZE, 1)))
     model.add(layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
     model.add(layers.Conv2D(filters=32, kernel_size=(3, 3), activation='relu'))
     model.add(layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2)))
     model.add(layers.Conv2D(filters=16, kernel_size=(3, 3), activation='relu'))
+    
 
     model.add(layers.Flatten())
-    model.add(layers.Dense(128, activation='relu'))
-    model.add(layers.Dense(64, activation='relu'))
+
+    model.add(layers.Dense(1028, activation='relu'))
     model.add(layers.Dense(40, activation='softmax'))
 
     opt = tf.keras.optimizers.Adam(lr=STANFORD_LEARNING_RATE)
-    model.compile(optimizer=opt,
+    model.compile(optimizer='adam',
                   loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
                   metrics=['accuracy'])
 
@@ -315,7 +348,7 @@ def optical_flow_model(verbose=0):
     model.add(layers.Flatten())
     model.add(layers.Dense(128, activation='relu'))
     model.add(layers.Dense(64, activation='relu'))
-    model.add(layers.Dense(40, activation='softmax'))
+    model.add(layers.Dense(5, activation='softmax'))
 
     opt = tf.keras.optimizers.Adam(lr=STANFORD_LEARNING_RATE)
     model.compile(optimizer=opt,
@@ -329,7 +362,7 @@ def optical_flow_model(verbose=0):
 
 def main():
     standford_train_images, standford_train_labels, standford_valid_images, standford_valid_labels, standford_test_images, standford_test_labels = Standford40()
-    tvhi_train_flow_files, tvhi_train_labels, tvhi_val_flow_files, tvhi_val_labels, tvhi_test_flow_files, tvhi_test_labels, tvhi_train_middle_frames_files, train_middle_frames_labels, test_middle_frames_files, test_middle_frames_labels = TV_HI()
+    # tvhi_train_flow_files, tvhi_train_labels, tvhi_val_flow_files, tvhi_val_labels, tvhi_test_flow_files, tvhi_test_labels, tvhi_train_middle_frames_files, train_middle_frames_labels, test_middle_frames_files, test_middle_frames_labels = TV_HI()
 
     # h, w = padding.get_max_size(train_middle_frames)
     # h, w = padding.get_max_size(test_middle_frames)
